@@ -138,7 +138,6 @@ function redo() {
 // FIGURES
 // mostly trivial code, some math and stuff
 
-defmulti("render_figure",  function(fig, selected, key) { return fig.get("type"); });
 defmulti("inside_figure",  function(fig, point)         { return fig.get("type"); });
 defmulti("inside_stroke",  function(fig, point)         { return fig.get("type"); });
 defmulti("move_figure",    function(fig, delta)         { return fig.get("type"); });
@@ -154,17 +153,6 @@ function find_selected(figures, point) {
 var selection_treshold = 8;
 
 // RECT
-
-defmethod("render_figure", "rect", function(fig, selected, key) {
-  return React.createElement(
-          "rect", 
-          { key: key,
-            className: selected ? "figure selected" : "figure",
-            width:     fig.get("w"),
-            height:    fig.get("h"),
-            x:         fig.get("x"),
-            y:         fig.get("y") });
-});
 
 defmethod("inside_figure", "rect", function(fig, point) {
   return fig.get("x")                <= point.get("x") &&
@@ -213,18 +201,6 @@ defmethod("move_figure", "rect", function(fig, delta) {
 
 // OVAL
 
-defmethod("render_figure", "oval", function(fig, selected, key) {
-  return React.createElement(
-           "ellipse", 
-           { key: key,
-             className: selected ? "figure selected" : "figure",
-             cx:        fig.get("cx"),
-             cy:        fig.get("cy"),
-             rx:        fig.get("rx"),
-             ry:        fig.get("ry") });
-});
-
-
 function inside_ellipse(x, y, cx, cy, rx, ry) {
   return (x-cx)*(x-cx)/(rx*rx) + (y-cy)*(y-cy)/(ry*ry) <= 1;
 }
@@ -269,16 +245,6 @@ defmethod("move_figure", "oval", function(fig, delta) {
 
 
 // LINE
-
-defmethod("render_figure", "line", function(fig, selected, key) {
-  return React.createElement("line",
-          { key: key,
-            className: selected ? "figure selected" : "figure",
-            x1:        fig.get("x1"),
-            y1:        fig.get("y1"),
-            x2:        fig.get("x2"),
-            y2:        fig.get("y2") });
-});
 
 defmethod("inside_stroke", "line", function(fig, point) {
   var x1 = fig.get("x1"),
@@ -383,115 +349,25 @@ defmethod("tool_on_drag", "line", fig_drag_fn);
 // REACT COMPONENTS
 
 var tool_keys = list(
-  ["select", "V"],
-  ["rect",   "R"],
-  ["oval",   "O"],
-  ["line",   "L"]
+  {code: "select", shortcut: "V"},
+  {code: "rect", shortcut: "R"},
+  {code: "oval", shortcut: "O"},
+  {code: "line", shortcut: "L"}
 );
 
-
-var Tool = React.createClass({
-  // Component will only be updated whenever props it depends on change
-  shouldComponentUpdate: function(next_props) {
-    return should_update("    Tool_" + this.props.code, this.props, next_props, ["code", "shortcut", "offset", "selected"]);
-  },
-  render: function() {
-    var code     = this.props.code,
-        shortcut = this.props.shortcut,
-        offset   = 40 * this.props.offset;
-
-    return React.createElement("g",
-            { className: "tool_" + code + (this.props.selected ? " selected" : ""),
-              transform: "translate(" + offset + ",0)",
-              onClick:   function(e) {
-                           edit_model(current_model().set("tool", code));
-                           e.stopPropagation();
-                         } },
-            React.createElement("rect", {x: 0, y: 0, width: 40, height: 40}),
-            React.createElement("text", {textAnchor: "middle", x: 20, y: 27}, shortcut));
-  }
-});
-
-
-var Toolbar = React.createClass({
-  shouldComponentUpdate: function(next_props) {
-    return should_update("  Toolbar", this.props, next_props, ["tool"]);
-  },
-  render: function() {
-    var tool = this.props.tool;
-    return React.createElement("g",
-            { id: "toolbar", transform: "translate(10,10)" },
-            tool_keys.map(function(t, i) {
-              return React.createElement(Tool, {key: t[0], code: t[0], shortcut: t[1], selected: tool === t[0], offset: i})
-            }));
-  }
-});
-
-
-var Scene = React.createClass({
-  shouldComponentUpdate: function(next_props) {
-    return should_update("  Scene", this.props, next_props, ["figures", "selection"]);
-  },
-  render: function() {
-    var figures   = this.props.figures,
-        selection = this.props.selection,
-        render    = function(fig, i) { return render_figure(fig, selection.contains(fig), i); };
-    return React.createElement("g", {}, figures.map(render));
-  }
-});
-
-
-var History = React.createClass({
-  shouldComponentUpdate: function(next_props) {
-    return should_update("  History", this.props, next_props, ["history", "at", "viewport"]);
-  },
-  render: function() {
-    var history  = this.props.history,
-        at       = this.props.at,
-        viewport = this.props.viewport,
-        render   = function(m, i) {
-                     return React.createElement("rect", {
-                       key:         i,
-                       className:   i === at ? "selected" : "",
-                       x:           i*14 + 10,
-                       y:           viewport.get("h") - 20,
-                       width:       12,
-                       height:      12,
-                       onClick:     function(e) { 
-                                      reset(world_ref, world_ref.value.set("at", i));
-                                    },
-                       onMouseOver: function(e) { render_ui(world_ref.value.set("at", i)); },
-                       onMouseOut:  function(e) { render_ui(world_ref.value); },
-                     });
-                   };
-    return React.createElement("g", { id: "history" }, this.props.history.map(render));
-  }
-});
-
-
-// Rendering is top-down. Components implement shouldComponentUpdate to decide whether 
-// they should be updated on this particular change or not
-var UI = React.createClass({
-  shouldComponentUpdate: function(next_props) {
-    return should_update("UI", this.props, next_props, ["world"]);
-  },
-  render: function() {
-    var world = this.props.world,
-        model = current_model(world);
-    return React.createElement("svg",
-             { id: "canvas" },
-             React.createElement(Toolbar, { tool:     model.get("tool") }),
-             React.createElement(History, { history:  world.get("history"), 
-                                            at:       world.get("at"),
-                                            viewport: world.get("viewport") }),
-             React.createElement(Scene,
-               { figures:   model.get("figures"),
-                 selection: model.get("selection") }));
-  }
-});
-
+var patch = IncrementalDOM.patch;
 function render_ui(world) {
-  React.render(React.createElement(UI, { world: world }), document.body);
+  var cmodel = current_model(world);
+  world = world.toJS();
+  world.current_model = cmodel.toJS();
+  cmodel.get('figures').forEach(function(v, k) {
+    if (cmodel.get('selection').contains(v)) {
+      world.current_model.figures[k].selected = true;
+      return false;
+    }
+  });
+  world.tool_keys = tool_keys.toJS();
+  patch(document.body, function() {yr.run('main', world)});
 }
 
 // We do not call render_ui explicitly. Every change gets applied to world_ref
@@ -560,7 +436,7 @@ document.addEventListener("mouseup", canvas_mouse_up);
 
 document.addEventListener("keydown", function(e) {
   if (!e.ctrlKey && !e.shiftKey && !e.metaKey) {
-    var tool = tool_keys.find(function(t) { return t[1].charCodeAt(0) === e.keyCode });
+    var tool = tool_keys.find(function(t) { return t.shortcut.charCodeAt(0) === e.keyCode });
     if (tool !== undefined)
       edit_model(current_model().set("tool", tool[0]));
   }
