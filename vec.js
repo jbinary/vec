@@ -83,7 +83,8 @@ function new_world() {
                           selection: set() });
   return map({ history:   list(empty_model), // collection of models
                at:        0,                 // position in history
-               viewport:  current_viewport() });
+               viewport:  current_viewport(),
+               tool_keys: tool_keys });
 }
 
 
@@ -349,25 +350,18 @@ defmethod("tool_on_drag", "line", fig_drag_fn);
 // REACT COMPONENTS
 
 var tool_keys = list(
-  {code: "select", shortcut: "V"},
-  {code: "rect", shortcut: "R"},
-  {code: "oval", shortcut: "O"},
-  {code: "line", shortcut: "L"}
+  map({code: "select", shortcut: "V"}),
+  map({code: "rect", shortcut: "R"}),
+  map({code: "oval", shortcut: "O"}),
+  map({code: "line", shortcut: "L"})
 );
 
 var patch = IncrementalDOM.patch;
 function render_ui(world) {
-  var cmodel = current_model(world);
-  world = world.toJS();
-  world.current_model = cmodel.toJS();
-  cmodel.get('figures').forEach(function(v, k) {
-    if (cmodel.get('selection').contains(v)) {
-      world.current_model.figures[k].selected = true;
-      return false;
-    }
+  world = world || world.value;
+  patch(document.body, function() {
+    yr.run('main', world.set('current_model', current_model(world)));
   });
-  world.tool_keys = tool_keys.toJS();
-  patch(document.body, function() {yr.run('main', world)});
 }
 
 // We do not call render_ui explicitly. Every change gets applied to world_ref
@@ -436,7 +430,7 @@ document.addEventListener("mouseup", canvas_mouse_up);
 
 document.addEventListener("keydown", function(e) {
   if (!e.ctrlKey && !e.shiftKey && !e.metaKey) {
-    var tool = tool_keys.find(function(t) { return t.shortcut.charCodeAt(0) === e.keyCode });
+    var tool = tool_keys.find(function(t) { return t.get('shortcut').charCodeAt(0) === e.keyCode });
     if (tool !== undefined)
       edit_model(current_model().set("tool", tool[0]));
   }
