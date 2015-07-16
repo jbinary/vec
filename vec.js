@@ -75,6 +75,12 @@ function should_update(name, from, to, props) {
 
 // Everything we render is kept in a single atom, including auxiliary stuff like click positions
 // and window size
+var tool_keys = list(
+  map({code: "select", shortcut: "V"}),
+  map({code: "rect", shortcut: "R"}),
+  map({code: "oval", shortcut: "O"}),
+  map({code: "line", shortcut: "L"})
+);
 var world_ref = atom(new_world());
 
 function new_world() {
@@ -348,13 +354,6 @@ defmethod("tool_on_drag", "line", fig_drag_fn);
 
 
 // REACT COMPONENTS
-
-var tool_keys = list(
-  map({code: "select", shortcut: "V"}),
-  map({code: "rect", shortcut: "R"}),
-  map({code: "oval", shortcut: "O"}),
-  map({code: "line", shortcut: "L"})
-);
 
 var patch = IncrementalDOM.patch;
 function render_ui(world) {
