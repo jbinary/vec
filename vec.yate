@@ -1,27 +1,30 @@
 module "main"
+external boolean in(nodeset, nodeset)
 
 match / {
     <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
-        <g id="toolbar" transform="translate(10, 10)">
-            apply /.tool_keys
-        </g>
+        apply / toolbar
         <g id="history">
             apply /.history
         </g>
-        <g>
-            apply .current_model.figures scene
-        </g>
+        apply .current_model scene
     </svg>
 }
 
-match /.tool_keys {
+match / @(/.tool_keys|.current_model.tool) toolbar {
+    <g id="toolbar" transform="translate(10, 10)">
+        apply /.tool_keys
+    </g>
+}
+
+match /.tool_keys @(.code|.shortcut|/.current_model.tool) {
     code = .code
     <g class="tool_{ code }">
         if /.current_model.tool == code {
             @class += " selected"
         }
         @transform = "translate(" + 40 * index() + ",0)"
-        @onclick = "edit_model(current_model().set('tool', '{ .code }'))"
+        @onclick = "edit_model(current_model().set('tool', '{ code }'))"
         <rect x="0" y="0" width="40" height="40"/>
         <text x="20" y="27" text-anchor="middle">
             .shortcut
@@ -29,7 +32,7 @@ match /.tool_keys {
     </g>
 }
 
-match /.history {
+match /.history @(/.history|/.at|/.viewport) {
     i = index()
     <rect#'{ i }' width="12" height="12">
         if i == /.at {
@@ -43,9 +46,15 @@ match /.history {
     </rect>
 }
 
+match .current_model @(.figures|.selection) scene {
+    <g>
+        apply .figures scene
+    </g>
+}
+
 match .current_model.figures[.type=="rect"] scene {
     <rect#'{ index() }' width="{ .w }" height="{ .h }" x="{ .x }" y="{ .y }" class="figure">
-        if .selected {
+        if in(current(), /.current_model.selection) {
             @class += " selected"
         }
     </rect>
@@ -53,7 +62,7 @@ match .current_model.figures[.type=="rect"] scene {
 
 match .current_model.figures[.type=="oval"] scene {
     <ellipse#'{ index() }' cx="{ .cx }" cy="{ .cy }" rx="{ .rx }" ry="{ .ry }" class="figure">
-        if .selected {
+        if in(current(), /.current_model.selection) {
             @class += " selected"
         }
     </ellipse>
@@ -61,7 +70,7 @@ match .current_model.figures[.type=="oval"] scene {
 
 match .current_model.figures[.type=="line"] scene {
     <line#'{ index() }' x1="{ .x1 }" y1="{ .y1 }" x2="{ .x2 }" y2="{ .y2 }" class="figure">
-        if .selected {
+        if in(current(), /.current_model.selection) {
             @class += " selected"
         }
     </line>

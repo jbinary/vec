@@ -1,5 +1,13 @@
 // UTILS
 
+// Yate external funcs
+window.tracking = {};
+
+yr.externals['in'] = function(what, in_what) {
+    if (what.length && in_what.length)
+        return in_what[0].data.contains(what[0].data);
+}
+
 
 // Multimethods are flexible polymorphic construct, decoulped from class, open for extension
 
